@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30204.135
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyFFmpeg", "EasyFFmpeg\EasyFFmpeg.csproj", "{2D28A768-E09F-4C74-8DB0-AB724A355DDD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyFFmpegSample", "EasyFFmpegSample\EasyFFmpegSample.csproj", "{0DAB8888-AB31-4943-A635-777422383B57}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2D28A768-E09F-4C74-8DB0-AB724A355DDD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D28A768-E09F-4C74-8DB0-AB724A355DDD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D28A768-E09F-4C74-8DB0-AB724A355DDD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D28A768-E09F-4C74-8DB0-AB724A355DDD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0DAB8888-AB31-4943-A635-777422383B57}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0DAB8888-AB31-4943-A635-777422383B57}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0DAB8888-AB31-4943-A635-777422383B57}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0DAB8888-AB31-4943-A635-777422383B57}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {92EA4277-300E-49F3-97E2-1A05A5DF9520}
+	EndGlobalSection
+EndGlobal
