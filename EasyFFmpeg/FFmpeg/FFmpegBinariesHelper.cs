@@ -7,6 +7,8 @@ namespace EasyFFmpeg
     public static class FFmpegBinariesHelper
     {
         private const string LD_LIBRARY_PATH = "LD_LIBRARY_PATH";
+        private static string probe;
+
         public static void RegisterFFmpegBinaries()
         {
             switch (Environment.OSVersion.Platform)
@@ -14,8 +16,11 @@ namespace EasyFFmpeg
                 case PlatformID.Win32NT:
                 case PlatformID.Win32S:
                 case PlatformID.Win32Windows:
+
+                    CheckOperatingProcess();
+
                     var current = Environment.CurrentDirectory;
-                    var probe = "Plugins";
+         
                     while (current != null)
                     {
                         var ffmpegDirectory = Path.Combine(current, probe);
@@ -32,6 +37,18 @@ namespace EasyFFmpeg
                     var libraryPath = Environment.GetEnvironmentVariable(LD_LIBRARY_PATH);
                     RegisterLibrariesSearchPath(libraryPath);
                     break;
+            }
+        }
+
+        private static void CheckOperatingProcess()
+        {
+            if (Environment.Is64BitProcess)
+            {
+                probe = Path.Combine("Plugins", "FFmpeg", "x64");
+            }
+            else
+            {
+                probe = Path.Combine("Plugins", "FFmpeg", "x32");
             }
         }
 
