@@ -44,11 +44,11 @@ namespace EasyFFmpeg
         {
             if (Environment.Is64BitProcess)
             {
-                probe = Path.Combine("Plugins", "FFmpeg", "x64");
+                probe = Path.Combine("Plugins", "FFmpeg", "64bit");
             }
             else
             {
-                probe = Path.Combine("Plugins", "FFmpeg", "x32");
+                probe = Path.Combine("Plugins", "FFmpeg", "32bit");
             }
         }
 
