@@ -6,12 +6,6 @@ using System.Windows.Threading;
 
 namespace EasyFFmpegSample
 {
-    public enum VTYPE
-    {
-        RTSP_RTP = 0,
-        CAM
-    }
-
     /// <summary>
     /// MainWindow.xaml에 대한 상호 작용 논리
     /// </summary>
@@ -33,7 +27,7 @@ namespace EasyFFmpegSample
             string url = URL_TextBox.Text;
             int type = VType_ComboBox.SelectedIndex;
 
-            easyFFmpeg.InitializeFFmpeg(url, (VIDEO_INPUT_TYPE)type);
+            easyFFmpeg.InitializeFFmpeg(url, (VideoInputType)type);
 
             easyFFmpeg.PlayVideo();
             easyFFmpeg.VideoFrameReceived += VideoFrameReceived;

@@ -12,31 +12,30 @@ namespace EasyFFmpeg
 {
     public unsafe class EasyFFmpegManager
     {
-        VideoInfo videoInfo = new VideoInfo();
+        private VideoInfo videoInfo = new VideoInfo();
 
-        ConcurrentQueue<AVFrame> decodedFrameQueue = new ConcurrentQueue<AVFrame>();
-        AVFrame queueFrame;
+        private readonly ConcurrentQueue<AVFrame> decodedFrameQueue = new ConcurrentQueue<AVFrame>();
+        private readonly AVHWDeviceType hwDeviceType;
 
-        H264VideoStreamEncoder h264Encoder;
+        private AVFrame queueFrame;
+        private VideoInputType videoInputType;
 
-        ManualResetEvent isDecodingEvent;
-        ManualResetEvent isEncodingEvent;
+        private H264VideoStreamEncoder h264Encoder;
+        private ManualResetEvent isDecodingEvent;
+        private ManualResetEvent isEncodingEvent;
 
-        AVHWDeviceType hwDeviceType;
+        private string url;
 
-        int frameNumber = 0;
-        bool isRecordComplete;
-
-        bool isInit;
-        bool isDecodingThreadRunning;
-        bool isEncodingThreadRunning;
+        private int frameNumber = 0;
+        private bool isInit;
+        private bool isRecordComplete;        
+        private bool isDecodingThreadRunning;
+        private bool isEncodingThreadRunning;
 
         public delegate void VideoFrameReceivedHandler(BitmapImage bitmapImage);
         public event VideoFrameReceivedHandler VideoFrameReceived;
 
-        string url;
-        VIDEO_INPUT_TYPE videoInputType;
-
+       
         public EasyFFmpegManager()
         {
             hwDeviceType = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;    //temp
@@ -48,7 +47,7 @@ namespace EasyFFmpeg
             isInit = false;
         }
 
-        public void InitializeFFmpeg(string _url, VIDEO_INPUT_TYPE _inputType)
+        public void InitializeFFmpeg(string _url, VideoInputType _inputType)
         {
             url = _url;
             videoInputType = _inputType;
@@ -89,7 +88,7 @@ namespace EasyFFmpeg
 
         public void PlayVideo()
         {
-            if (isInit == false)
+            if (!isInit)
             {
                 Console.WriteLine("FFmpeg 초기화 필요");
                 return;
@@ -117,7 +116,7 @@ namespace EasyFFmpeg
 
         public void RecordVideo(string fileName)
         {
-            if (isInit == false)
+            if (!isInit)
             {
                 Console.WriteLine("FFmpeg 초기화 필요");
                 return;
@@ -209,7 +208,7 @@ namespace EasyFFmpeg
         {
             if (isDecodingThreadRunning)
             {
-                using (MemoryStream memory = new MemoryStream())
+                using (var memory = new MemoryStream())
                 {
                     bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
                     memory.Position = 0;
@@ -303,7 +302,7 @@ namespace EasyFFmpeg
                 isEncodingEvent.Reset();
                 isEncodingEvent.Dispose();
 
-                if (isRecordComplete == false)
+                if (!isRecordComplete)
                 {
                     h264Encoder.FlushEncode();
                     h264Encoder.Dispose();

@@ -5,11 +5,10 @@ namespace EasyFFmpeg
 {
     public unsafe class H264VideoStreamEncoder : IDisposable
     {
-        int enc_stream_index;
-        AVFormatContext* oFormatContext;
-        AVCodecContext* oCodecContext;
-        AVCodec* oCodec;
-
+        private AVFormatContext* oFormatContext;
+        private AVCodecContext* oCodecContext;
+        private AVCodec* oCodec;
+        
         public void OpenOutputURL(string fileName, VideoInfo videoInfo)
         {
             AVStream* out_stream;
@@ -59,19 +58,7 @@ namespace EasyFFmpeg
             oFormatContext = _oFormatContext;
         }
 
-        public void Dispose()
-        {
-            var _oFormatContext = oFormatContext;
-
-            //Write file trailer
-            ffmpeg.av_write_trailer(_oFormatContext);
-            ffmpeg.avformat_close_input(&_oFormatContext);
-
-            //메모리 해제
-            ffmpeg.avcodec_close(oCodecContext);
-            ffmpeg.av_free(oCodecContext);
-            ffmpeg.av_free(oCodec);
-        }
+       
 
         public void TryEncodeNextPacket(AVFrame uncompressed_frame)
         {
@@ -90,13 +77,13 @@ namespace EasyFFmpeg
                     //read encodeded packet from output codec context
                     error = ffmpeg.avcodec_receive_packet(oCodecContext, encoded_packet);
 
-                    enc_stream_index = encoded_packet->stream_index;
+                    int encodedStreamIndex = encoded_packet->stream_index;
 
                     //set packet pts & dts for timestamp
                     if (encoded_packet->pts != ffmpeg.AV_NOPTS_VALUE)
-                        encoded_packet->pts = (long)(ffmpeg.av_rescale_q(encoded_packet->pts, oCodecContext->time_base, oFormatContext->streams[enc_stream_index]->time_base));
+                        encoded_packet->pts = ffmpeg.av_rescale_q(encoded_packet->pts, oCodecContext->time_base, oFormatContext->streams[encodedStreamIndex]->time_base);
                     if (encoded_packet->dts != ffmpeg.AV_NOPTS_VALUE)
-                        encoded_packet->dts = ffmpeg.av_rescale_q(encoded_packet->dts, oCodecContext->time_base, oFormatContext->streams[enc_stream_index]->time_base);
+                        encoded_packet->dts = ffmpeg.av_rescale_q(encoded_packet->dts, oCodecContext->time_base, oFormatContext->streams[encodedStreamIndex]->time_base);
 
                     //write frame in video file
                     ffmpeg.av_write_frame(oFormatContext, encoded_packet);
@@ -114,6 +101,43 @@ namespace EasyFFmpeg
             ffmpeg.avcodec_send_frame(oCodecContext, null);
         }
 
+
+
+
+        #region Dispose
+
+        private bool disposedValue;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    var _oFormatContext = oFormatContext;
+
+                    //Write file trailer
+                    ffmpeg.av_write_trailer(_oFormatContext);
+                    ffmpeg.avformat_close_input(&_oFormatContext);
+
+                    //메모리 해제
+                    ffmpeg.avcodec_close(oCodecContext);
+                    ffmpeg.av_free(oCodecContext);
+                    ffmpeg.av_free(oCodec);
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // 이 코드를 변경하지 마세요. 'Dispose(bool disposing)' 메서드에 정리 코드를 입력합니다.
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+
+        #endregion
 
     }
 }

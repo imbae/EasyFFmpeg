@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace EasyFFmpeg
 {
-    public class FFmpegBinariesHelper
+    public static class FFmpegBinariesHelper
     {
         private const string LD_LIBRARY_PATH = "LD_LIBRARY_PATH";
         public static void RegisterFFmpegBinaries()

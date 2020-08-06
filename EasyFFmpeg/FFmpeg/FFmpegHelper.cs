@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using FFmpeg.AutoGen;
 
@@ -18,7 +19,10 @@ namespace EasyFFmpeg
         public static int ThrowExceptionIfError(this int error)
         {
             if (error < 0)
-                throw new ApplicationException(Av_strerror(error));
+            {
+                Debug.WriteLine(Av_strerror(error));
+            }
+
             return error;
         }
     }

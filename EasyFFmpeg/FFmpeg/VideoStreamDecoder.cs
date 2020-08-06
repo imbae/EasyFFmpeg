@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace EasyFFmpeg
 {
-    public enum VIDEO_INPUT_TYPE
+    public enum VideoInputType
     {
         RTP_RTSP = 0,
         CAM_DEVICE
@@ -22,13 +22,14 @@ namespace EasyFFmpeg
         private readonly AVPacket* rawPacket;
 
         private readonly int dec_stream_index;
+        
 
         public string CodecName { get; }
         public Size FrameSize { get; }
         public AVPixelFormat PixelFormat { get; }
 
 
-        public VideoStreamDecoder(string url, VIDEO_INPUT_TYPE inputType, AVHWDeviceType HWDeviceType = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
+        public VideoStreamDecoder(string url, VideoInputType inputType, AVHWDeviceType HWDeviceType = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
         {
             ffmpeg.avdevice_register_all();
 
@@ -42,11 +43,11 @@ namespace EasyFFmpeg
 
             switch (inputType)
             {
-                case VIDEO_INPUT_TYPE.CAM_DEVICE:
+                case VideoInputType.CAM_DEVICE:
                     AVInputFormat* iformat = ffmpeg.av_find_input_format("dshow");
                     ffmpeg.avformat_open_input(&_iFormatContext, url, iformat, null).ThrowExceptionIfError();
                     break;
-                case VIDEO_INPUT_TYPE.RTP_RTSP:
+                case VideoInputType.RTP_RTSP:
                     ffmpeg.avformat_open_input(&_iFormatContext, url, null, &avDict).ThrowExceptionIfError();
                     break;
                 default:
@@ -55,7 +56,7 @@ namespace EasyFFmpeg
 
             ffmpeg.avformat_find_stream_info(iFormatContext, null).ThrowExceptionIfError();
 
-            AVCodec* codec = null;
+            AVCodec* codec;
 
             dec_stream_index = ffmpeg.av_find_best_stream(iFormatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0).ThrowExceptionIfError();
 
@@ -69,11 +70,6 @@ namespace EasyFFmpeg
 
             ffmpeg.avcodec_parameters_to_context(iCodecContext, iFormatContext->streams[dec_stream_index]->codecpar).ThrowExceptionIfError();
             ffmpeg.avcodec_open2(iCodecContext, codec, null).ThrowExceptionIfError();
-
-            if (codec == null)
-            {
-                throw new ArgumentNullException();
-            }
 
             CodecName = ffmpeg.avcodec_get_name(codec->id);
             FrameSize = new Size(iCodecContext->width, iCodecContext->height);
@@ -165,18 +161,40 @@ namespace EasyFFmpeg
             return videoInfo;
         }
 
+
+        #region Dispose
+
+        private bool disposedValue;
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    ffmpeg.av_frame_unref(decodedFrame);
+                    ffmpeg.av_free(decodedFrame);
+
+                    ffmpeg.av_packet_unref(rawPacket);
+                    ffmpeg.av_free(rawPacket);
+
+                    ffmpeg.avcodec_close(iCodecContext);
+
+                    var _iFormatContext = iFormatContext;
+                    ffmpeg.avformat_close_input(&_iFormatContext);
+                }
+
+                disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            ffmpeg.av_frame_unref(decodedFrame);
-            ffmpeg.av_free(decodedFrame);
-
-            ffmpeg.av_packet_unref(rawPacket);
-            ffmpeg.av_free(rawPacket);
-
-            ffmpeg.avcodec_close(iCodecContext);
-
-            var _iFormatContext = iFormatContext;
-            ffmpeg.avformat_close_input(&_iFormatContext);
+            // 이 코드를 변경하지 마세요. 'Dispose(bool disposing)' 메서드에 정리 코드를 입력합니다.
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
+
+        #endregion
     }
 }

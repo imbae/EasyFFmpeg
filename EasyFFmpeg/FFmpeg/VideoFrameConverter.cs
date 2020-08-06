@@ -1,5 +1,6 @@
 ﻿using FFmpeg.AutoGen;
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 
@@ -25,7 +26,7 @@ namespace EasyFFmpeg
 
             if (_pConvertContext == null)
             {
-                throw new ApplicationException("Could not initialize the conversion context.");
+                Debug.WriteLine("Could not initialize the conversion context.");
             }
 
             var convertedFrameBufferSize = ffmpeg.av_image_get_buffer_size(
