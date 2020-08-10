@@ -202,6 +202,10 @@ namespace EasyFFmpeg
             {
                 Console.WriteLine(e.Message);
             }
+            catch (AccessViolationException e)
+            {
+                Console.WriteLine(e.Message);
+            }
         }
 
         private void BitmapToImageSource(Bitmap bitmap)
@@ -249,6 +253,10 @@ namespace EasyFFmpeg
                 }
             }
             catch (ObjectDisposedException e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            catch (AccessViolationException e)
             {
                 Console.WriteLine(e.Message);
             }

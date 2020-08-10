@@ -60,9 +60,7 @@ namespace EasyFFmpeg
             }
             catch(AccessViolationException ex)
             {
-                Debug.WriteLine(ex.ToString());
-
-                return new AVFrame();
+                throw new AccessViolationException(ex.ToString());
             }
 
             var data = new byte_ptrArray8();
