@@ -51,10 +51,19 @@ namespace EasyFFmpeg
 
         public AVFrame Convert(AVFrame sourceFrame)
         {
-            ffmpeg.sws_scale(_pConvertContext,
+            try
+            {
+                ffmpeg.sws_scale(_pConvertContext,
                 sourceFrame.data, sourceFrame.linesize,
                 0, sourceFrame.height,
                 _dstData, _dstLinesize);
+            }
+            catch(AccessViolationException ex)
+            {
+                Debug.WriteLine(ex.ToString());
+
+                return new AVFrame();
+            }
 
             var data = new byte_ptrArray8();
 
