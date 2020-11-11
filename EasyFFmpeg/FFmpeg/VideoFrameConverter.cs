@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 
 namespace EasyFFmpeg
@@ -49,6 +50,7 @@ namespace EasyFFmpeg
             ffmpeg.sws_freeContext(_pConvertContext);
         }
 
+        [HandleProcessCorruptedStateExceptions]
         public AVFrame Convert(AVFrame sourceFrame)
         {
             try

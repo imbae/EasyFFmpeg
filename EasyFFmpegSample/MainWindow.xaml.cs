@@ -20,6 +20,9 @@ namespace EasyFFmpegSample
             InitializeComponent();
 
             easyFFmpeg = new EasyFFmpegManager();
+
+
+            //rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov
         }
 
         private void Play_Button_Click(object sender, RoutedEventArgs e)
