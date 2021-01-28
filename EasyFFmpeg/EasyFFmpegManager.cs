@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -197,15 +198,15 @@ namespace EasyFFmpeg
             }
             catch (ApplicationException e)
             {
-                Console.WriteLine(e.Message);
+                Debug.WriteLine(e.Message);
             }
             catch (ObjectDisposedException e)
             {
-                Console.WriteLine(e.Message);
+                Debug.WriteLine(e.Message);
             }
             catch (AccessViolationException e)
             {
-                Console.WriteLine(e.Message);
+                Debug.WriteLine(e.Message);
             }
         }
 
@@ -215,18 +216,25 @@ namespace EasyFFmpeg
             {
                 using (var memory = new MemoryStream())
                 {
-                    bitmap.Save(memory, System.Drawing.Imaging.ImageFormat.Bmp);
-                    memory.Position = 0;
-                    BitmapImage bitmapimage = new BitmapImage();
-                    bitmapimage.BeginInit();
-                    bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmapimage.StreamSource = memory;
-                    bitmapimage.EndInit();
-                    bitmapimage.Freeze();
+                    try
+                    {
+                        bitmap.Save(memory, ImageFormat.Bmp);
+                        memory.Position = 0;
+                        BitmapImage bitmapimage = new BitmapImage();
+                        bitmapimage.BeginInit();
+                        bitmapimage.CacheOption = BitmapCacheOption.OnLoad;
+                        bitmapimage.StreamSource = memory;
+                        bitmapimage.EndInit();
+                        bitmapimage.Freeze();
 
-                    VideoFrameReceived(bitmapimage);
+                        VideoFrameReceived?.Invoke(bitmapimage);
 
-                    memory.Dispose();
+                        memory.Dispose();
+                    }
+                    catch(NullReferenceException ex)
+                    {
+                        Debug.WriteLine(ex.ToString());
+                    }
                 }
             }
         }
