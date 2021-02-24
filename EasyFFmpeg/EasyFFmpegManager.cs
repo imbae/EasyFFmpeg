@@ -155,7 +155,7 @@ namespace EasyFFmpeg
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Debug.WriteLine(ex.ToString());
                 return -1;
             }
 
