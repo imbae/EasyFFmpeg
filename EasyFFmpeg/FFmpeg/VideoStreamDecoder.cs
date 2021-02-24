@@ -31,52 +31,59 @@ namespace EasyFFmpeg
 
         public VideoStreamDecoder(string url, VideoInputType inputType, AVHWDeviceType HWDeviceType = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
         {
-            ffmpeg.avdevice_register_all();
-
-            iFormatContext = ffmpeg.avformat_alloc_context();
-            receivedFrame = ffmpeg.av_frame_alloc();
-
-            var _iFormatContext = iFormatContext;
-
-            AVDictionary* avDict;
-            ffmpeg.av_dict_set(&avDict, "reorder_queue_size", "1", 0);
-
-            switch (inputType)
+            try
             {
-                case VideoInputType.CAM_DEVICE:
-                    AVInputFormat* iformat = ffmpeg.av_find_input_format("dshow");
-                    ffmpeg.avformat_open_input(&_iFormatContext, url, iformat, null).ThrowExceptionIfError();
-                    break;
-                case VideoInputType.RTP_RTSP:
-                    ffmpeg.avformat_open_input(&_iFormatContext, url, null, &avDict).ThrowExceptionIfError();
-                    break;
-                default:
-                    break;
+                ffmpeg.avdevice_register_all();
+
+                iFormatContext = ffmpeg.avformat_alloc_context();
+                receivedFrame = ffmpeg.av_frame_alloc();
+
+                var _iFormatContext = iFormatContext;
+
+                AVDictionary* avDict;
+                ffmpeg.av_dict_set(&avDict, "reorder_queue_size", "1", 0);
+
+                switch (inputType)
+                {
+                    case VideoInputType.CAM_DEVICE:
+                        AVInputFormat* iformat = ffmpeg.av_find_input_format("dshow");
+                        ffmpeg.avformat_open_input(&_iFormatContext, url, iformat, null).ThrowExceptionIfError();
+                        break;
+                    case VideoInputType.RTP_RTSP:
+                        ffmpeg.avformat_open_input(&_iFormatContext, url, null, &avDict).ThrowExceptionIfError();
+                        break;
+                    default:
+                        break;
+                }
+
+                ffmpeg.avformat_find_stream_info(iFormatContext, null).ThrowExceptionIfError();
+
+                AVCodec* codec;
+
+                dec_stream_index = ffmpeg.av_find_best_stream(iFormatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0).ThrowExceptionIfError();
+
+
+                iCodecContext = ffmpeg.avcodec_alloc_context3(codec);
+
+                if (HWDeviceType != AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
+                {
+                    ffmpeg.av_hwdevice_ctx_create(&iCodecContext->hw_device_ctx, HWDeviceType, null, null, 0).ThrowExceptionIfError();
+                }
+
+                ffmpeg.avcodec_parameters_to_context(iCodecContext, iFormatContext->streams[dec_stream_index]->codecpar).ThrowExceptionIfError();
+                ffmpeg.avcodec_open2(iCodecContext, codec, null).ThrowExceptionIfError();
+
+                CodecName = ffmpeg.avcodec_get_name(codec->id);
+                FrameSize = new Size(iCodecContext->width, iCodecContext->height);
+                PixelFormat = iCodecContext->pix_fmt;
+
+                rawPacket = ffmpeg.av_packet_alloc();
+                decodedFrame = ffmpeg.av_frame_alloc();
             }
-
-            ffmpeg.avformat_find_stream_info(iFormatContext, null).ThrowExceptionIfError();
-
-            AVCodec* codec;
-
-            dec_stream_index = ffmpeg.av_find_best_stream(iFormatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0).ThrowExceptionIfError();
-
-
-            iCodecContext = ffmpeg.avcodec_alloc_context3(codec);
-
-            if (HWDeviceType != AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
+            catch(AccessViolationException ex)
             {
-                ffmpeg.av_hwdevice_ctx_create(&iCodecContext->hw_device_ctx, HWDeviceType, null, null, 0).ThrowExceptionIfError();
+                throw new AccessViolationException("Access Violation Exception", ex);
             }
-
-            ffmpeg.avcodec_parameters_to_context(iCodecContext, iFormatContext->streams[dec_stream_index]->codecpar).ThrowExceptionIfError();
-            ffmpeg.avcodec_open2(iCodecContext, codec, null).ThrowExceptionIfError();
-
-            CodecName = ffmpeg.avcodec_get_name(codec->id);
-            FrameSize = new Size(iCodecContext->width, iCodecContext->height);
-            PixelFormat = iCodecContext->pix_fmt;
-
-            rawPacket = ffmpeg.av_packet_alloc();
-            decodedFrame = ffmpeg.av_frame_alloc();
         }
 
         public bool TryDecodeNextFrame(out AVFrame frame)
