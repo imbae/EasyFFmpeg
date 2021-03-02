@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Windows.Media.Imaging;
 using FFmpeg.AutoGen;
@@ -162,6 +163,7 @@ namespace EasyFFmpeg
             return 0;
         }
 
+        [HandleProcessCorruptedStateExceptions]
         private void DecodeAllFramesToImages(object state)
         {
             try
