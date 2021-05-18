@@ -1,79 +1,39 @@
-﻿using System;
+﻿using FFmpeg.AutoGen;
+using System;
 using System.IO;
 using System.Runtime.InteropServices;
 
 namespace EasyFFmpeg
 {
-    public static class FFmpegBinariesHelper
+    public class FFmpegBinariesHelper
     {
-        private const string LD_LIBRARY_PATH = "LD_LIBRARY_PATH";
-        private static string probe;
-
-        public static void RegisterFFmpegBinaries()
+        internal static void RegisterFFmpegBinaries()
         {
-            switch (Environment.OSVersion.Platform)
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
-                case PlatformID.Win32NT:
-                case PlatformID.Win32S:
-                case PlatformID.Win32Windows:
-
-                    CheckOperatingProcess();
-
-                    var current = Environment.CurrentDirectory;
-         
-                    while (current != null)
+                var current = Environment.CurrentDirectory;
+                var probe = Path.Combine("Plugins", "FFmpeg", Environment.Is64BitProcess ? "64bit" : "32bit");
+                while (current != null)
+                {
+                    var ffmpegBinaryPath = Path.Combine(current, probe);
+                    if (Directory.Exists(ffmpegBinaryPath))
                     {
-                        var ffmpegDirectory = Path.Combine(current, probe);
-                        if (Directory.Exists(ffmpegDirectory))
-                        {
-                            RegisterLibrariesSearchPath(ffmpegDirectory);
-                            return;
-                        }
-                        current = Directory.GetParent(current)?.FullName;
+                        Console.WriteLine($"FFmpeg binaries found in: {ffmpegBinaryPath}");
+                        ffmpeg.RootPath = ffmpegBinaryPath;
+                        return;
                     }
-                    break;
-                case PlatformID.Unix:
-                case PlatformID.MacOSX:
-                    var libraryPath = Environment.GetEnvironmentVariable(LD_LIBRARY_PATH);
-                    RegisterLibrariesSearchPath(libraryPath);
-                    break;
-            }
-        }
 
-        private static void CheckOperatingProcess()
-        {
-            if (Environment.Is64BitProcess)
+                    current = Directory.GetParent(current)?.FullName;
+                }
+            }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                probe = Path.Combine("Plugins", "FFmpeg", "64bit");
+                ffmpeg.RootPath = "/lib/x86_64-linux-gnu/";
             }
             else
             {
-                probe = Path.Combine("Plugins", "FFmpeg", "32bit");
+                throw new NotSupportedException(); // fell free add support for platform of you choose
             }
         }
-
-        private static void RegisterLibrariesSearchPath(string path)
-        {
-            switch (Environment.OSVersion.Platform)
-            {
-                case PlatformID.Win32NT:
-                case PlatformID.Win32S:
-                case PlatformID.Win32Windows:
-                    SetDllDirectory(path);
-                    break;
-                case PlatformID.Unix:
-                case PlatformID.MacOSX:
-                    string currentValue = Environment.GetEnvironmentVariable(LD_LIBRARY_PATH);
-                    if (string.IsNullOrWhiteSpace(currentValue) == false && currentValue.Contains(path) == false)
-                    {
-                        string newValue = currentValue + Path.PathSeparator + path;
-                        Environment.SetEnvironmentVariable(LD_LIBRARY_PATH, newValue);
-                    }
-                    break;
-            }
-        }
-
-        [DllImport("kernel32", SetLastError = true)]
-        private static extern bool SetDllDirectory(string lpPathName);
     }
 }

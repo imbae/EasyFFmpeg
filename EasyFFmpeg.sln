@@ -6,6 +6,9 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyFFmpeg", "EasyFFmpeg\EasyFFmpeg.csproj", "{2D28A768-E09F-4C74-8DB0-AB724A355DDD}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EasyFFmpegSample", "EasyFFmpegSample\EasyFFmpegSample.csproj", "{0DAB8888-AB31-4943-A635-777422383B57}"
+	ProjectSection(ProjectDependencies) = postProject
+		{2D28A768-E09F-4C74-8DB0-AB724A355DDD} = {2D28A768-E09F-4C74-8DB0-AB724A355DDD}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
