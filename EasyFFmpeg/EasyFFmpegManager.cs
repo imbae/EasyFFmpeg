@@ -6,7 +6,6 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Windows.Media.Imaging;
 using FFmpeg.AutoGen;
@@ -18,7 +17,7 @@ namespace EasyFFmpeg
         private VideoInfo videoInfo = new VideoInfo();
 
         private readonly ConcurrentQueue<AVFrame> decodedFrameQueue = new ConcurrentQueue<AVFrame>();
-        private readonly AVHWDeviceType hwDeviceType;
+        private AVHWDeviceType hwDeviceType;
 
         private AVFrame queueFrame;
         private VideoInputType videoInputType;
@@ -30,77 +29,35 @@ namespace EasyFFmpeg
         private string url;
 
         private int frameNumber = 0;
-        private bool isInit;
         private bool isRecordComplete;        
         private bool isDecodingThreadRunning;
         private bool isEncodingThreadRunning;
 
         public delegate void VideoFrameReceivedHandler(BitmapImage bitmapImage);
         public event VideoFrameReceivedHandler VideoFrameReceived;
-
-       
+               
         public EasyFFmpegManager()
         {
-            hwDeviceType = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;    //temp
-
-            FFmpegBinariesHelper.RegisterFFmpegBinaries();
-
-            //ConfigureHWDecoder(out hwDeviceType);
-
-            isInit = false;
+            try
+            {
+                FFmpegBinariesHelper.RegisterFFmpegBinaries();
+            }
+            catch (NotSupportedException ex) { Debug.WriteLine(ex.Message); }
         }
 
         public void InitializeFFmpeg(string _url, VideoInputType _inputType)
         {
             url = _url;
             videoInputType = _inputType;
-
-            isInit = true;
         }
 
-        private void ConfigureHWDecoder(out AVHWDeviceType HWtype)
+        public void PlayVideo(string _url, VideoInputType _inputType)
         {
-            HWtype = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;
-            Console.WriteLine("Use hardware acceleration for decoding?[n]");
-            var key = Console.ReadLine();
-            var availableHWDecoders = new Dictionary<int, AVHWDeviceType>();
-            if (key == "y")
-            {
-                Console.WriteLine("Select hardware decoder:");
-                var type = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;
-                var number = 0;
-                while ((type = ffmpeg.av_hwdevice_iterate_types(type)) != AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
-                {
-                    Console.WriteLine($"{++number}. {type}");
-                    availableHWDecoders.Add(number, type);
-                }
-                if (availableHWDecoders.Count == 0)
-                {
-                    Console.WriteLine("Your system have no hardware decoders.");
-                    HWtype = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;
-                    return;
-                }
-                int decoderNumber = availableHWDecoders.SingleOrDefault(t => t.Value == AVHWDeviceType.AV_HWDEVICE_TYPE_DXVA2).Key;
-                if (decoderNumber == 0)
-                    decoderNumber = availableHWDecoders.First().Key;
-                Console.WriteLine($"Selected [{decoderNumber}]");
-                int.TryParse(Console.ReadLine(), out var inputDecoderNumber);
-                availableHWDecoders.TryGetValue(inputDecoderNumber == 0 ? decoderNumber : inputDecoderNumber, out HWtype);
-            }
-        }
-
-        public void PlayVideo()
-        {
-            if (!isInit)
-            {
-                Console.WriteLine("FFmpeg 초기화 필요");
-                return;
-            }
+            url = _url;
+            videoInputType = _inputType;
 
             isDecodingEvent = new ManualResetEvent(false);
-
             ThreadPool.QueueUserWorkItem(new WaitCallback(DecodeAllFramesToImages));
-
             isDecodingEvent.Set();
 
             isDecodingThreadRunning = true;
@@ -119,14 +76,7 @@ namespace EasyFFmpeg
 
         public void RecordVideo(string fileName)
         {
-            if (!isInit)
-            {
-                Console.WriteLine("FFmpeg 초기화 필요");
-                return;
-            }
-
             isEncodingEvent = new ManualResetEvent(false);
-
             h264Encoder = new H264VideoStreamEncoder();
 
             //initialize output format&codec
@@ -163,11 +113,51 @@ namespace EasyFFmpeg
             return 0;
         }
 
-        [HandleProcessCorruptedStateExceptions]
+        private void ConfigureHWDecoder(bool useHwAcc, out AVHWDeviceType HWtype)
+        {
+            HWtype = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;
+
+            if (useHwAcc)
+            {
+                var availableHWDecoders = new Dictionary<int, AVHWDeviceType>();
+
+                Console.WriteLine("Select hardware decoder:");
+                var type = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;
+                var number = 0;
+
+                while ((type = ffmpeg.av_hwdevice_iterate_types(type)) != AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
+                {
+                    Console.WriteLine($"{++number}. {type}");
+                    availableHWDecoders.Add(number, type);
+                }
+                if (availableHWDecoders.Count == 0)
+                {
+                    Console.WriteLine("Your system have no hardware decoders.");
+                    HWtype = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE;
+                    return;
+                }
+
+                int decoderNumber = availableHWDecoders.SingleOrDefault(t => t.Value == AVHWDeviceType.AV_HWDEVICE_TYPE_DXVA2).Key;
+
+                if (decoderNumber == 0)
+                {
+                    decoderNumber = availableHWDecoders.First().Key;
+                }
+
+                Console.WriteLine($"Selected [{decoderNumber}]");
+
+                int.TryParse(Console.ReadLine(), out var inputDecoderNumber);
+
+                availableHWDecoders.TryGetValue(inputDecoderNumber == 0 ? decoderNumber : inputDecoderNumber, out HWtype);
+            }
+        }
+
         private void DecodeAllFramesToImages(object state)
         {
             try
             {
+                ConfigureHWDecoder(false, out hwDeviceType);
+
                 using (var decoder = new VideoStreamDecoder(url, videoInputType))
                 {
                     videoInfo = decoder.GetVideoInfo();

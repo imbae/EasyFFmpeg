@@ -52,7 +52,7 @@
             TextWrapping="Wrap"
             VerticalAlignment="Top"
             Width="320"
-            Text="rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov"
+            Text="rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4"
             VerticalContentAlignment="Center" />
         <Label
             Content="URL"

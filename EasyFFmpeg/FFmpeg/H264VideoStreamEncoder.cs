@@ -123,7 +123,6 @@ namespace EasyFFmpeg
                     //메모리 해제
                     ffmpeg.avcodec_close(oCodecContext);
                     ffmpeg.av_free(oCodecContext);
-                    ffmpeg.av_free(oCodec);
                 }
 
                 disposedValue = true;

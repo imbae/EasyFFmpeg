@@ -13,16 +13,12 @@ namespace EasyFFmpegSample
     {
         Dispatcher dispatcher = Application.Current.Dispatcher;
 
-        EasyFFmpegManager easyFFmpeg;
+        EasyFFmpegManager easyFFmpeg = new EasyFFmpegManager();
 
         public MainWindow()
         {
             InitializeComponent();
-
-            easyFFmpeg = new EasyFFmpegManager();
-
-
-            //rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov
+            //rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4
         }
 
         private void Play_Button_Click(object sender, RoutedEventArgs e)
@@ -30,9 +26,7 @@ namespace EasyFFmpegSample
             string url = URL_TextBox.Text;
             int type = VType_ComboBox.SelectedIndex;
 
-            easyFFmpeg.InitializeFFmpeg(url, (VideoInputType)type);
-
-            easyFFmpeg.PlayVideo();
+            easyFFmpeg.PlayVideo(url, (VideoInputType)type);
             easyFFmpeg.VideoFrameReceived += VideoFrameReceived;
         }
 
