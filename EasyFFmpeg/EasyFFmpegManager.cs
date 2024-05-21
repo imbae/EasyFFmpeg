@@ -242,11 +242,10 @@ namespace EasyFFmpeg
                         var sourcePixelFormat = AVPixelFormat.AV_PIX_FMT_BGR24;
                         var destinationPixelFormat = AVPixelFormat.AV_PIX_FMT_YUV420P; //for h.264
 
-                        using (var vfc = new VideoFrameConverter(videoInfo.SourceFrameSize, sourcePixelFormat, videoInfo.DestinationFrameSize, destinationPixelFormat))
+                        using (var vfc = new VideoFrameConverter(videoInfo.FrameSize, sourcePixelFormat, videoInfo.FrameSize, destinationPixelFormat))
                         {
                             var convertedFrame = vfc.Convert(queueFrame);
-                            convertedFrame.pts = frameNumber * 2;       //to do
-                            h264Encoder.TryEncodeNextPacket(convertedFrame);
+                            h264Encoder.TryEncodeNextPacket(convertedFrame, videoInfo);
                         }
 
                         frameNumber++;

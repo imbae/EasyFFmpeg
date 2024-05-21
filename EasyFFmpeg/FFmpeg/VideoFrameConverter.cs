@@ -81,7 +81,11 @@ namespace EasyFFmpeg
                 data = data,
                 linesize = linesize,
                 width = _destinationSize.Width,
-                height = _destinationSize.Height
+                height = _destinationSize.Height,
+
+                duration = sourceFrame.duration,
+                pts = sourceFrame.pts,
+                pkt_dts = sourceFrame.pkt_dts
             };
         }
     }

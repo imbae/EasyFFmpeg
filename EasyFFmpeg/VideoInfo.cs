@@ -3,15 +3,14 @@ using System.Drawing;
 
 namespace EasyFFmpeg
 {
-    public class VideoInfo
+    public unsafe class VideoInfo
     {
-        public string CodecName { get; set; }
-        public Size SourceFrameSize { get; set; }
-        public Size DestinationFrameSize { get; set; }
-        public AVPixelFormat SourcePixelFormat { get; set; }
-        public AVPixelFormat DestinationPixelFormat { get; set; }
+        public long BitRate { get; set; }
+        public int GopSize { get; set; }
+        public int MaxBFrames { get; set; }
+        public Size FrameSize { get; set; }
         public AVRational Sample_aspect_ratio { get; set; }
         public AVRational Timebase { get; set; }
-        public AVRational Framerate { get; set; }
+        public AVRational FrameRate { get; set; }
     }
 }

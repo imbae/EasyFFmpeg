@@ -25,11 +25,8 @@ namespace EasyFFmpeg
 
         private readonly int streamIndex;
         
-
-        public string CodecName { get; }
         public Size FrameSize { get; }
         public AVPixelFormat PixelFormat { get; }
-
 
         public VideoStreamDecoder(string url, VideoInputType inputType, AVHWDeviceType HWDeviceType = AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
         {
@@ -74,7 +71,6 @@ namespace EasyFFmpeg
                 ffmpeg.avcodec_parameters_to_context(pCodecContext, pFormatContext->streams[streamIndex]->codecpar).ThrowExceptionIfError();
                 ffmpeg.avcodec_open2(pCodecContext, codec, null).ThrowExceptionIfError();
 
-                CodecName = ffmpeg.avcodec_get_name(codec->id);
                 FrameSize = new Size(pCodecContext->width, pCodecContext->height);
                 PixelFormat = pCodecContext->pix_fmt;
 
@@ -172,13 +168,13 @@ namespace EasyFFmpeg
         {
             VideoInfo videoInfo = new VideoInfo();
 
-            videoInfo.SourceFrameSize = new Size(pCodecContext->width, pCodecContext->height);
-            videoInfo.DestinationFrameSize = videoInfo.SourceFrameSize;
-            videoInfo.SourcePixelFormat = pCodecContext->pix_fmt;
-            videoInfo.DestinationPixelFormat = AVPixelFormat.AV_PIX_FMT_BGR24;
+            videoInfo.FrameSize = new Size(pCodecContext->width, pCodecContext->height);
+            videoInfo.GopSize = pCodecContext->gop_size;
+            videoInfo.BitRate = pCodecContext->bit_rate;
+            videoInfo.MaxBFrames = pCodecContext->max_b_frames;
             videoInfo.Sample_aspect_ratio = pCodecContext->sample_aspect_ratio;
-            videoInfo.Timebase = pCodecContext->time_base;
-            videoInfo.Framerate = pCodecContext->framerate;
+            videoInfo.FrameRate = pFormatContext->streams[streamIndex]->avg_frame_rate;
+            videoInfo.Timebase = pFormatContext->streams[streamIndex]->time_base;
 
             return videoInfo;
         }

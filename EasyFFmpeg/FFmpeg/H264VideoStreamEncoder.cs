@@ -8,7 +8,7 @@ namespace EasyFFmpeg
         private AVFormatContext* oFormatContext;
         private AVCodecContext* oCodecContext;
         private AVCodec* oCodec;
-        
+
         public void OpenOutputURL(string fileName, VideoInfo videoInfo)
         {
             AVStream* out_stream;
@@ -24,22 +24,22 @@ namespace EasyFFmpeg
 
             oCodecContext = ffmpeg.avcodec_alloc_context3(oCodec);
 
-            oCodecContext->height = videoInfo.SourceFrameSize.Height;
-            oCodecContext->width = videoInfo.SourceFrameSize.Width;
+            oCodecContext->height = videoInfo.FrameSize.Height;
+            oCodecContext->width = videoInfo.FrameSize.Width;
+            oCodecContext->gop_size = videoInfo.GopSize;
+            oCodecContext->max_b_frames = videoInfo.MaxBFrames;
+            oCodecContext->bit_rate = videoInfo.BitRate;
             oCodecContext->sample_aspect_ratio = videoInfo.Sample_aspect_ratio;
-            oCodecContext->pix_fmt = AVPixelFormat.AV_PIX_FMT_YUV420P;
-            oCodecContext->time_base = new AVRational { num = 1, den = 15 };
-            oCodecContext->framerate = ffmpeg.av_inv_q(videoInfo.Framerate);
+            oCodecContext->pix_fmt = AVPixelFormat.AV_PIX_FMT_YUV420P;      //for h.264
+            oCodecContext->time_base = videoInfo.Timebase;
+            oCodecContext->framerate = videoInfo.FrameRate;
 
-            //ffmpeg.av_opt_set(oCodecContext->priv_data, "profile", "baseline", 0);
-
-            if ((_oFormatContext->oformat->flags & ffmpeg.AVFMT_GLOBALHEADER) != 0)
-            {
-                oCodecContext->flags |= ffmpeg.AV_CODEC_FLAG_GLOBAL_HEADER;
-            }
+            AVDictionary* codecOptions = null;
+            ffmpeg.av_dict_set(&codecOptions, "profile", "high", 0);
+            ffmpeg.av_dict_set(&codecOptions, "level", "4.0", 0);
 
             //open codecd
-            ffmpeg.avcodec_open2(oCodecContext, oCodec, null).ThrowExceptionIfError();
+            ffmpeg.avcodec_open2(oCodecContext, oCodec, &codecOptions).ThrowExceptionIfError();
 
             ffmpeg.avcodec_parameters_from_context(out_stream->codecpar, oCodecContext);
             out_stream->time_base = oCodecContext->time_base;
@@ -58,41 +58,38 @@ namespace EasyFFmpeg
             oFormatContext = _oFormatContext;
         }
 
-       
-
-        public void TryEncodeNextPacket(AVFrame uncompressed_frame)
+        public void TryEncodeNextPacket(AVFrame frame, VideoInfo info)
         {
-            var encoded_packet = ffmpeg.av_packet_alloc();
-            ffmpeg.av_init_packet(encoded_packet);
+            var packet = ffmpeg.av_packet_alloc();
+            ffmpeg.av_packet_unref(packet);
 
             try
             {
-                int error;
+                int error = 0;
 
                 do
                 {
                     //Supply a raw video frame to the output condec context
-                    ffmpeg.avcodec_send_frame(oCodecContext, &uncompressed_frame).ThrowExceptionIfError();
+                    ffmpeg.avcodec_send_frame(oCodecContext, &frame).ThrowExceptionIfError();
 
                     //read encodeded packet from output codec context
-                    error = ffmpeg.avcodec_receive_packet(oCodecContext, encoded_packet);
+                    error = ffmpeg.avcodec_receive_packet(oCodecContext, packet);
 
-                    int encodedStreamIndex = encoded_packet->stream_index;
+                    int encodedStreamIndex = packet->stream_index;
 
-                    //set packet pts & dts for timestamp
-                    if (encoded_packet->pts != ffmpeg.AV_NOPTS_VALUE)
-                        encoded_packet->pts = ffmpeg.av_rescale_q(encoded_packet->pts, oCodecContext->time_base, oFormatContext->streams[encodedStreamIndex]->time_base);
-                    if (encoded_packet->dts != ffmpeg.AV_NOPTS_VALUE)
-                        encoded_packet->dts = ffmpeg.av_rescale_q(encoded_packet->dts, oCodecContext->time_base, oFormatContext->streams[encodedStreamIndex]->time_base);
+                    // Rescale packet PTS and DTS to the output time base
+                    packet->pts = ffmpeg.av_rescale_q(packet->pts, oCodecContext->time_base, info.Timebase);
+                    packet->dts = ffmpeg.av_rescale_q(packet->dts, oCodecContext->time_base, info.Timebase);
+                    packet->duration = ffmpeg.av_rescale_q(packet->duration, oCodecContext->time_base, info.Timebase);
 
                     //write frame in video file
-                    ffmpeg.av_write_frame(oFormatContext, encoded_packet);
+                    ffmpeg.av_interleaved_write_frame(oFormatContext, packet);
 
                 } while (error == ffmpeg.AVERROR(ffmpeg.EAGAIN) || error == ffmpeg.AVERROR(ffmpeg.AVERROR_EOF));
             }
             finally
             {
-                ffmpeg.av_packet_unref(encoded_packet);
+                ffmpeg.av_packet_unref(packet);
             }
         }
 
@@ -101,39 +98,19 @@ namespace EasyFFmpeg
             ffmpeg.avcodec_send_frame(oCodecContext, null);
         }
 
-
-
-
         #region Dispose
-
-        private bool disposedValue;
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    var _oFormatContext = oFormatContext;
-
-                    //Write file trailer
-                    ffmpeg.av_write_trailer(_oFormatContext);
-                    ffmpeg.avformat_close_input(&_oFormatContext);
-
-                    //메모리 해제
-                    ffmpeg.avcodec_close(oCodecContext);
-                    ffmpeg.av_free(oCodecContext);
-                }
-
-                disposedValue = true;
-            }
-        }
 
         public void Dispose()
         {
-            // 이 코드를 변경하지 마세요. 'Dispose(bool disposing)' 메서드에 정리 코드를 입력합니다.
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            var _oFormatContext = oFormatContext;
+
+            //Write file trailer
+            ffmpeg.av_write_trailer(_oFormatContext);
+            ffmpeg.avformat_close_input(&_oFormatContext);
+
+            //메모리 해제
+            ffmpeg.avcodec_close(oCodecContext);
+            ffmpeg.av_free(oCodecContext);
         }
 
         #endregion
