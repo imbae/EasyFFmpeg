@@ -163,7 +163,7 @@ namespace EasyFFmpeg
                     videoInfo = decoder.GetVideoInfo();
 
                     var info = decoder.GetContextInfo();
-                    info.ToList().ForEach(x => Console.WriteLine($"{x.Key} = {x.Value}"));
+                    info.ToList().ForEach(x => Debug.WriteLine($"{x.Key} = {x.Value}"));
 
                     var sourceSize = decoder.FrameSize;
                     var sourcePixelFormat = hwDeviceType == AVHWDeviceType.AV_HWDEVICE_TYPE_NONE ? decoder.PixelFormat : GetHWPixelFormat(hwDeviceType);
@@ -176,7 +176,7 @@ namespace EasyFFmpeg
                         {
                             var convertedFrame = vfc.Convert(frame);
 
-                            Bitmap bitmap = new Bitmap(convertedFrame.width, convertedFrame.height, convertedFrame.linesize[0], System.Drawing.Imaging.PixelFormat.Format24bppRgb, (IntPtr)convertedFrame.data[0]);
+                            Bitmap bitmap = new Bitmap(convertedFrame.width, convertedFrame.height, convertedFrame.linesize[0], PixelFormat.Format24bppRgb, (IntPtr)convertedFrame.data[0]);
 
                             if (isEncodingThreadRunning)
                             {

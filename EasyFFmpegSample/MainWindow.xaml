@@ -43,6 +43,8 @@
                 Content="RTSP / RTP" />
             <ComboBoxItem
                 Content="Web Cam" />
+            <ComboBoxItem
+                Content="File" />
         </ComboBox>
         <TextBox
             x:Name="URL_TextBox"
@@ -52,7 +54,7 @@
             TextWrapping="Wrap"
             VerticalAlignment="Top"
             Width="320"
-            Text="rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4"
+            Text="http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
             VerticalContentAlignment="Center" />
         <Label
             Content="URL"

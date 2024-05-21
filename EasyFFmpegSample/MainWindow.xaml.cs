@@ -18,7 +18,7 @@ namespace EasyFFmpegSample
         public MainWindow()
         {
             InitializeComponent();
-            //rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4
+            //http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
         }
 
         private void Play_Button_Click(object sender, RoutedEventArgs e)

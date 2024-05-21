@@ -3,25 +3,27 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
+using System.Threading;
 
 namespace EasyFFmpeg
 {
     public enum VideoInputType
     {
-        RTP_RTSP = 0,
+        DEFAULT = 0,
+        RTP_RTSP,
         CAM_DEVICE
     }
 
     public unsafe class VideoStreamDecoder : IDisposable
     {
-        private readonly AVCodecContext* iCodecContext;
-        private readonly AVFormatContext* iFormatContext;
+        private readonly AVCodecContext* pCodecContext;
+        private readonly AVFormatContext* pFormatContext;
 
-        private readonly AVFrame* decodedFrame;
+        private readonly AVPacket* pPacket;
+        private readonly AVFrame* pFrame;
         private readonly AVFrame* receivedFrame;
-        private readonly AVPacket* rawPacket;
 
-        private readonly int dec_stream_index;
+        private readonly int streamIndex;
         
 
         public string CodecName { get; }
@@ -35,10 +37,10 @@ namespace EasyFFmpeg
             {
                 ffmpeg.avdevice_register_all();
 
-                iFormatContext = ffmpeg.avformat_alloc_context();
+                pFormatContext = ffmpeg.avformat_alloc_context();
                 receivedFrame = ffmpeg.av_frame_alloc();
 
-                var _iFormatContext = iFormatContext;
+                var pFormat = pFormatContext;
 
                 AVDictionary* avDict;
                 ffmpeg.av_dict_set(&avDict, "reorder_queue_size", "1", 0);
@@ -47,38 +49,37 @@ namespace EasyFFmpeg
                 {
                     case VideoInputType.CAM_DEVICE:
                         AVInputFormat* iformat = ffmpeg.av_find_input_format("dshow");
-                        ffmpeg.avformat_open_input(&_iFormatContext, url, iformat, null).ThrowExceptionIfError();
+                        ffmpeg.avformat_open_input(&pFormat, url, iformat, null).ThrowExceptionIfError();
                         break;
                     case VideoInputType.RTP_RTSP:
-                        ffmpeg.avformat_open_input(&_iFormatContext, url, null, &avDict).ThrowExceptionIfError();
+                        ffmpeg.avformat_open_input(&pFormat, url, null, &avDict).ThrowExceptionIfError();
                         break;
                     default:
+                        ffmpeg.avformat_open_input(&pFormat, url, null, null).ThrowExceptionIfError();
                         break;
                 }
 
-                ffmpeg.avformat_find_stream_info(iFormatContext, null).ThrowExceptionIfError();
+                ffmpeg.avformat_find_stream_info(pFormatContext, null).ThrowExceptionIfError();
 
-                AVCodec* codec;
+                AVCodec* codec = null;
 
-                dec_stream_index = ffmpeg.av_find_best_stream(iFormatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0).ThrowExceptionIfError();
-
-
-                iCodecContext = ffmpeg.avcodec_alloc_context3(codec);
+                streamIndex = ffmpeg.av_find_best_stream(pFormatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, &codec, 0).ThrowExceptionIfError();
+                pCodecContext = ffmpeg.avcodec_alloc_context3(codec);
 
                 if (HWDeviceType != AVHWDeviceType.AV_HWDEVICE_TYPE_NONE)
                 {
-                    ffmpeg.av_hwdevice_ctx_create(&iCodecContext->hw_device_ctx, HWDeviceType, null, null, 0).ThrowExceptionIfError();
+                    ffmpeg.av_hwdevice_ctx_create(&pCodecContext->hw_device_ctx, HWDeviceType, null, null, 0).ThrowExceptionIfError();
                 }
 
-                ffmpeg.avcodec_parameters_to_context(iCodecContext, iFormatContext->streams[dec_stream_index]->codecpar).ThrowExceptionIfError();
-                ffmpeg.avcodec_open2(iCodecContext, codec, null).ThrowExceptionIfError();
+                ffmpeg.avcodec_parameters_to_context(pCodecContext, pFormatContext->streams[streamIndex]->codecpar).ThrowExceptionIfError();
+                ffmpeg.avcodec_open2(pCodecContext, codec, null).ThrowExceptionIfError();
 
                 CodecName = ffmpeg.avcodec_get_name(codec->id);
-                FrameSize = new Size(iCodecContext->width, iCodecContext->height);
-                PixelFormat = iCodecContext->pix_fmt;
+                FrameSize = new Size(pCodecContext->width, pCodecContext->height);
+                PixelFormat = pCodecContext->pix_fmt;
 
-                rawPacket = ffmpeg.av_packet_alloc();
-                decodedFrame = ffmpeg.av_frame_alloc();
+                pPacket = ffmpeg.av_packet_alloc();
+                pFrame = ffmpeg.av_frame_alloc();
             }
             catch(AccessViolationException ex)
             {
@@ -88,7 +89,7 @@ namespace EasyFFmpeg
 
         public bool TryDecodeNextFrame(out AVFrame frame)
         {
-            ffmpeg.av_frame_unref(decodedFrame);
+            ffmpeg.av_frame_unref(pFrame);
             ffmpeg.av_frame_unref(receivedFrame);
             int error;
 
@@ -98,42 +99,55 @@ namespace EasyFFmpeg
                 {
                     do
                     {
-                        error = ffmpeg.av_read_frame(iFormatContext, rawPacket);
+                        ffmpeg.av_packet_unref(pPacket);
+                        error = ffmpeg.av_read_frame(pFormatContext, pPacket);
+
                         if (error == ffmpeg.AVERROR_EOF)
                         {
-                            frame = *decodedFrame;
+                            frame = *pFrame;
                             return false;
                         }
 
                         error.ThrowExceptionIfError();
-                    } while (rawPacket->stream_index != dec_stream_index);
 
-                    ffmpeg.av_packet_rescale_ts(rawPacket, iFormatContext->streams[dec_stream_index]->time_base, iCodecContext->time_base);
+                    } while (pPacket->stream_index != streamIndex);
+
+                    AVRational time_base = pFormatContext->streams[streamIndex]->time_base;
+
+                    if (time_base.num == 0 || time_base.den == 0)
+                    {
+                        time_base.num = 1;
+                        time_base.den = 25;
+                    }
+
+                    var delay = TimeSpan.FromSeconds((double)pPacket->duration * time_base.num / time_base.den);
+                    Thread.Sleep(delay);
 
                     /* Send the video frame stored in the temporary packet to the decoder.
                      * The input video stream decoder is used to do this. */
-                    ffmpeg.avcodec_send_packet(iCodecContext, rawPacket).ThrowExceptionIfError();
+                    ffmpeg.avcodec_send_packet(pCodecContext, pPacket).ThrowExceptionIfError();
+
                 }
                 finally
                 {
-                    ffmpeg.av_packet_unref(rawPacket);
+                    ffmpeg.av_packet_unref(pPacket);
                 }
 
                 //read decoded frame from input codec context
-                error = ffmpeg.avcodec_receive_frame(iCodecContext, decodedFrame);
+                error = ffmpeg.avcodec_receive_frame(pCodecContext, pFrame);
 
             } while (error == ffmpeg.AVERROR(ffmpeg.EAGAIN));
 
             error.ThrowExceptionIfError();
 
-            if (iCodecContext->hw_device_ctx != null)
+            if (pCodecContext->hw_device_ctx != null)
             {
-                ffmpeg.av_hwframe_transfer_data(receivedFrame, decodedFrame, 0).ThrowExceptionIfError();
+                ffmpeg.av_hwframe_transfer_data(receivedFrame, pFrame, 0).ThrowExceptionIfError();
                 frame = *receivedFrame;
             }
             else
             {
-                frame = *decodedFrame;
+                frame = *pFrame;
             }
 
             return true;
@@ -143,7 +157,8 @@ namespace EasyFFmpeg
         {
             AVDictionaryEntry* tag = null;
             var result = new Dictionary<string, string>();
-            while ((tag = ffmpeg.av_dict_get(iFormatContext->metadata, "", tag, ffmpeg.AV_DICT_IGNORE_SUFFIX)) != null)
+
+            while ((tag = ffmpeg.av_dict_get(pFormatContext->metadata, "", tag, ffmpeg.AV_DICT_IGNORE_SUFFIX)) != null)
             {
                 var key = Marshal.PtrToStringAnsi((IntPtr)tag->key);
                 var value = Marshal.PtrToStringAnsi((IntPtr)tag->value);
@@ -157,13 +172,13 @@ namespace EasyFFmpeg
         {
             VideoInfo videoInfo = new VideoInfo();
 
-            videoInfo.SourceFrameSize = new Size(iCodecContext->width, iCodecContext->height);
+            videoInfo.SourceFrameSize = new Size(pCodecContext->width, pCodecContext->height);
             videoInfo.DestinationFrameSize = videoInfo.SourceFrameSize;
-            videoInfo.SourcePixelFormat = iCodecContext->pix_fmt;
+            videoInfo.SourcePixelFormat = pCodecContext->pix_fmt;
             videoInfo.DestinationPixelFormat = AVPixelFormat.AV_PIX_FMT_BGR24;
-            videoInfo.Sample_aspect_ratio = iCodecContext->sample_aspect_ratio;
-            videoInfo.Timebase = iCodecContext->time_base;
-            videoInfo.Framerate = iCodecContext->framerate;
+            videoInfo.Sample_aspect_ratio = pCodecContext->sample_aspect_ratio;
+            videoInfo.Timebase = pCodecContext->time_base;
+            videoInfo.Framerate = pCodecContext->framerate;
 
             return videoInfo;
         }
@@ -171,35 +186,18 @@ namespace EasyFFmpeg
 
         #region Dispose
 
-        private bool disposedValue;
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    ffmpeg.av_frame_unref(decodedFrame);
-                    ffmpeg.av_free(decodedFrame);
-
-                    ffmpeg.av_packet_unref(rawPacket);
-                    ffmpeg.av_free(rawPacket);
-
-                    ffmpeg.avcodec_close(iCodecContext);
-
-                    var _iFormatContext = iFormatContext;
-                    ffmpeg.avformat_close_input(&_iFormatContext);
-                }
-
-                disposedValue = true;
-            }
-        }
-
         public void Dispose()
         {
-            // 이 코드를 변경하지 마세요. 'Dispose(bool disposing)' 메서드에 정리 코드를 입력합니다.
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            var frame = pFrame;
+            ffmpeg.av_frame_free(&frame);
+
+            var packet = pPacket;
+            ffmpeg.av_packet_free(&packet);
+
+            ffmpeg.avcodec_close(pCodecContext);
+
+            var pFormat = pFormatContext;
+            ffmpeg.avformat_close_input(&pFormat);
         }
 
         #endregion
