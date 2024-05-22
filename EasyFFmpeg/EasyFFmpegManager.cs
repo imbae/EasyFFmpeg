@@ -28,10 +28,9 @@ namespace EasyFFmpeg
 
         private string url;
 
-        private int frameNumber = 0;
+        private bool isRecord;
         private bool isRecordComplete;        
         private bool isDecodingThreadRunning;
-        private bool isEncodingThreadRunning;
 
         public delegate void VideoFrameReceivedHandler(BitmapImage bitmapImage);
         public event VideoFrameReceivedHandler VideoFrameReceived;
@@ -86,7 +85,7 @@ namespace EasyFFmpeg
 
             isEncodingEvent.Set();
 
-            isEncodingThreadRunning = true;
+            isRecord = true;
             isRecordComplete = false;
         }
 
@@ -94,13 +93,11 @@ namespace EasyFFmpeg
         {
             try
             {
-                isEncodingThreadRunning = false;
+                isRecord = false;
                 isEncodingEvent.Reset();
 
                 h264Encoder.FlushEncode();
                 h264Encoder.Dispose();
-
-                frameNumber = 0;
 
                 isRecordComplete = true;
             }
@@ -178,7 +175,7 @@ namespace EasyFFmpeg
 
                             Bitmap bitmap = new Bitmap(convertedFrame.width, convertedFrame.height, convertedFrame.linesize[0], PixelFormat.Format24bppRgb, (IntPtr)convertedFrame.data[0]);
 
-                            if (isEncodingThreadRunning)
+                            if (isRecord)
                             {
                                 decodedFrameQueue.Enqueue(convertedFrame);
                             }
@@ -247,8 +244,6 @@ namespace EasyFFmpeg
                             var convertedFrame = vfc.Convert(queueFrame);
                             h264Encoder.TryEncodeNextPacket(convertedFrame, videoInfo);
                         }
-
-                        frameNumber++;
                     }
                 }
             }
@@ -303,9 +298,9 @@ namespace EasyFFmpeg
                 isDecodingEvent.Dispose();
             }
 
-            if (isEncodingThreadRunning)
+            if (isRecord)
             {
-                isEncodingThreadRunning = false;
+                isRecord = false;
 
                 isEncodingEvent.Reset();
                 isEncodingEvent.Dispose();

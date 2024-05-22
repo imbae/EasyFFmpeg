@@ -172,7 +172,7 @@ namespace EasyFFmpeg
             videoInfo.GopSize = pCodecContext->gop_size;
             videoInfo.BitRate = pCodecContext->bit_rate;
             videoInfo.MaxBFrames = pCodecContext->max_b_frames;
-            videoInfo.Sample_aspect_ratio = pCodecContext->sample_aspect_ratio;
+            videoInfo.SampleAspectRatio = pCodecContext->sample_aspect_ratio;
             videoInfo.FrameRate = pFormatContext->streams[streamIndex]->avg_frame_rate;
             videoInfo.Timebase = pFormatContext->streams[streamIndex]->time_base;
 

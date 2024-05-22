@@ -29,7 +29,7 @@ namespace EasyFFmpeg
             oCodecContext->gop_size = videoInfo.GopSize;
             oCodecContext->max_b_frames = videoInfo.MaxBFrames;
             oCodecContext->bit_rate = videoInfo.BitRate;
-            oCodecContext->sample_aspect_ratio = videoInfo.Sample_aspect_ratio;
+            oCodecContext->sample_aspect_ratio = videoInfo.SampleAspectRatio;
             oCodecContext->pix_fmt = AVPixelFormat.AV_PIX_FMT_YUV420P;      //for h.264
             oCodecContext->time_base = videoInfo.Timebase;
             oCodecContext->framerate = videoInfo.FrameRate;
